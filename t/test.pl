@@ -356,7 +356,6 @@ isnt(rc, 0, 'multitime: valid signed zone with timestamps in the past');
 @e = split /\n/, stderr;
 like(shift @e, qr/signature is too old/, "multitime: signature is too old");
 
-
 run('./validns', @threads, '-t1447282800', '-s', 't/issues/45-counting-of-records/de.test.signed');
 is(rc, 0, 'valid zone parses ok');
 like(stdout, qr/^record count by type:$/m, "record count exists");
@@ -372,6 +371,28 @@ like(stdout, qr/^\s+DNSKEY: 2$/m, "correct amount of DNSKEY-RR counted");
 like(stdout, qr/^\s+NSEC3: 39$/m, "correct amount of NSEC3-RR counted");
 like(stdout, qr/^\s+NSEC3PARAM: 1$/m, "correct amount of NSEC3-RR counted");
 like(stdout, qr/^\s+RRSIG: 72$/m, "correct amount of RRSIG-RR counted");
+
+run('./validns', @threads, '-t1447282800', '-pnsec3-consistency', '-s', 't/issues/42-consistency-of-nsec3-chain/de.test.inconsistent_algorithm');
+isnt(rc, 0, 'inconsistent algorithm in NSEC3 not detected');
+# this is not testable, because there is only one algorithm allowed. er get other errors in this case
+like(stderr, qr/unrecognized or unsupported hash algorithm$/m, "inconsistent algorithm in NSEC3 detected");
+
+run('./validns', @threads, '-t1447282800', '-pnsec3-consistency', '-s', 't/issues/42-consistency-of-nsec3-chain/de.test.inconsistent_flags');
+isnt(rc, 0, 'inconsistent flags in NSEC3 not detected');
+like(stderr, qr/inconsistent NSEC3 flags$/m, "inconsistent flags in NSEC3 detected");
+
+run('./validns', @threads, '-t1447282800', '-pnsec3-consistency', '-s', 't/issues/42-consistency-of-nsec3-chain/de.test.inconsistent_iterations');
+isnt(rc, 0, 'inconsistent iterations in NSEC3 not detected');
+like(stderr, qr/inconsistent NSEC3 iterations$/m, "inconsistent iterations in NSEC3 detected");
+
+run('./validns', @threads, '-t1447282800', '-pnsec3-consistency', '-s', 't/issues/42-consistency-of-nsec3-chain/de.test.inconsistent_salt');
+isnt(rc, 0, 'inconsistent salt in NSEC3 not detected');
+like(stderr, qr/inconsistent NSEC3 salt$/m, "inconsistent salt in NSEC3 detected");
+
+run('./validns', @threads, '-t1447282800', '-pnsec3-consistency', '-s', 't/issues/42-consistency-of-nsec3-chain/de.test.ok');
+is(rc, 0, 'no error when policy nsec3-consistency is active and no error is in the zone');
+
+
 
 }
 
