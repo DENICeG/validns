@@ -110,6 +110,8 @@ void ds_requires_ns_policy_check(void)
 {
 	struct rr_ds *rr = all_ds_rr;
 	while (rr) {
+		// find_rr_set uses getmem_temp, so we need to call freeall_temp
+		freeall_temp();
 		struct rr_set *ns_rr_set = find_rr_set(T_NS,rr->rr.rr_set->named_rr->name);
 		if (!ns_rr_set) {
 			moan(rr->rr.file_name, rr->rr.line, "DS-RR without corresponding NS-RR");

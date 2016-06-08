@@ -8,6 +8,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "mempool.h"
 #include "carp.h"
@@ -75,7 +76,8 @@ void *getmem_temp(size_t size)
 		temp_freespace->pool_size = pool_size;
 	}
 	if (temp_freespace->pool_size - temp_freespace->free_index < size)
-		croak(1, "getmem_temp request too large");
+		croak(1, "getmem_temp request too large, pool_size=%zu, free_index=%zu, size=%zu",
+				temp_freespace->pool_size, temp_freespace->free_index, size);
 	ret = temp_freespace->mem + temp_freespace->free_index;
 	temp_freespace->free_index += size;
 	return ret;
