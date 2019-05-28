@@ -17,109 +17,84 @@
 #include "carp.h"
 #include "rr.h"
 
-static struct rr_ds *all_ds_rr = NULL;
-
-static struct rr* ds_parse(char *name, long ttl, int type, char *s)
+static struct rr* ds_cds_parse(char *name, long ttl, int type, char *s)
 {
-	struct rr_ds *rr = getmem(sizeof(*rr));
-	int key_tag, algorithm, digest_type;
-	static struct rr *result;
+    struct rr_ds *rr = getmem(sizeof(*rr));
+    int key_tag, algorithm, digest_type;
 
-	key_tag = extract_integer(&s, "key tag");
-	if (key_tag < 0)	return NULL;
-	rr->key_tag = key_tag;
+    key_tag = extract_integer(&s, "key tag", NULL);
+    if (key_tag < 0)    return NULL;
+    rr->key_tag = key_tag;
 
-	algorithm = extract_algorithm(&s, "algorithm");
-	if (algorithm == ALG_UNSUPPORTED)	return NULL;
-	rr->algorithm = algorithm;
+    algorithm = extract_algorithm(&s, "algorithm");
+    if (algorithm == ALG_UNSUPPORTED)   return NULL;
+    rr->algorithm = algorithm;
 
-	digest_type = extract_integer(&s, "digest type");
-	if (digest_type < 0)	return NULL;
-	rr->digest_type = digest_type;
+    digest_type = extract_integer(&s, "digest type", NULL);
+    if (digest_type < 0)    return NULL;
+    rr->digest_type = digest_type;
 
-	rr->digest = extract_hex_binary_data(&s, "digest", EXTRACT_EAT_WHITESPACE);
-	if (rr->digest.length < 0)	return NULL;
+    rr->digest = extract_hex_binary_data(&s, "digest", EXTRACT_EAT_WHITESPACE);
+    if (rr->digest.length < 0)  return NULL;
 
-	/* See http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
-	 * for valid digest types. */
-	switch (digest_type) {
-	case 1:
-		if (rr->digest.length != SHA1_BYTES) {
-			return bitch("wrong SHA-1 digest length: %d bytes found, %d bytes expected", rr->digest.length, SHA1_BYTES);
-		}
-		break;
-	case 2:
-		if (rr->digest.length != SHA256_BYTES) {
-			return bitch("wrong SHA-256 digest length: %d bytes found, %d bytes expected", rr->digest.length, SHA256_BYTES);
-		}
-		break;
-	case 3:
-		if (rr->digest.length != GOST_BYTES) {
-			return bitch("wrong GOST R 34.11-94 digest length: %d bytes found, %d bytes expected", rr->digest.length, GOST_BYTES);
-		}
-		break;
-	case 4:
-		if (rr->digest.length != SHA384_BYTES) {
-			return bitch("wrong SHA-384 digest length: %d bytes found, %d bytes expected", rr->digest.length, SHA384_BYTES);
-		}
-		break;
-	default:
-		return bitch("bad or unsupported digest type %d", digest_type);
-	}
+    /* See http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
+     * for valid digest types. */
+    switch (digest_type) {
+    case 1:
+        if (rr->digest.length != SHA1_BYTES) {
+            return bitch("wrong SHA-1 digest length: %d bytes found, %d bytes expected", rr->digest.length, SHA1_BYTES);
+        }
+        break;
+    case 2:
+        if (rr->digest.length != SHA256_BYTES) {
+            return bitch("wrong SHA-256 digest length: %d bytes found, %d bytes expected", rr->digest.length, SHA256_BYTES);
+        }
+        break;
+    case 3:
+        if (rr->digest.length != GOST_BYTES) {
+            return bitch("wrong GOST R 34.11-94 digest length: %d bytes found, %d bytes expected", rr->digest.length, GOST_BYTES);
+        }
+        break;
+    case 4:
+        if (rr->digest.length != SHA384_BYTES) {
+            return bitch("wrong SHA-384 digest length: %d bytes found, %d bytes expected", rr->digest.length, SHA384_BYTES);
+        }
+        break;
+    default:
+        return bitch("bad or unsupported digest type %d", digest_type);
+    }
 
-	if (*s) {
-		return bitch("garbage after valid DS data");
-	}
-	result = store_record(type, name, ttl, rr);
-	if (result) {
-		rr->next_ds_rr = all_ds_rr;
-		all_ds_rr = rr;
-	}
-	return result;
+    if (*s) {
+        return bitch("garbage after valid %s data", type == T_CDS ? "CDS" : "DS");
+    }
+    return store_record(type, name, ttl, rr);
 }
 
-static char* ds_human(struct rr *rrv)
+static char* ds_cds_human(struct rr *rrv)
 {
-	RRCAST(ds);
+    RRCAST(ds);
     char ss[4096];
-	char *s = ss;
-	int l;
-	int i;
+    char *s = ss;
+    int l;
+    int i;
 
     l = snprintf(s, 4096, "%u %u %u ", rr->key_tag, rr->algorithm, rr->digest_type);
-	s += l;
-	for (i = 0; i < rr->digest.length; i++) {
-		l = snprintf(s, 4096-(s-ss), "%02X", (unsigned char)rr->digest.data[i]);
-		s += l;
-	}
+    s += l;
+    for (i = 0; i < rr->digest.length; i++) {
+        l = snprintf(s, 4096-(s-ss), "%02X", (unsigned char)rr->digest.data[i]);
+        s += l;
+    }
     return quickstrdup_temp(ss);
 }
 
-static struct binary_data ds_wirerdata(struct rr *rrv)
+static struct binary_data ds_cds_wirerdata(struct rr *rrv)
 {
-	RRCAST(ds);
+    RRCAST(ds);
 
-	return compose_binary_data("211d", 1,
-		rr->key_tag, rr->algorithm, rr->digest_type,
-		rr->digest);
+    return compose_binary_data("211d", 1,
+        rr->key_tag, rr->algorithm, rr->digest_type,
+        rr->digest);
 }
 
-struct rr_methods ds_methods = { ds_parse, ds_human, ds_wirerdata, NULL, NULL };
-
-void ds_requires_ns_policy_check(void)
-{
-	struct rr_ds *rr = all_ds_rr;
-	while (rr) {
-		// find_rr_set uses getmem_temp, so we need to call freeall_temp
-		freeall_temp();
-		struct rr_set *ns_rr_set = find_rr_set(T_NS,rr->rr.rr_set->named_rr->name);
-		if (!ns_rr_set) {
-			moan(rr->rr.file_name, rr->rr.line, "DS-RR without corresponding NS-RR");
-		} else if (ns_rr_set->count<2) {
-			moan(rr->rr.file_name, rr->rr.line, "DS-RR with less than 2 corresponding NS-RR");
-		}
-		rr = rr->next_ds_rr;
-
-	}
-
-}
+struct rr_methods ds_methods = { ds_cds_parse, ds_cds_human, ds_cds_wirerdata, NULL, NULL };
+struct rr_methods cds_methods = { ds_cds_parse, ds_cds_human, ds_cds_wirerdata, NULL, NULL };
