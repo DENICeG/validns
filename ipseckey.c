@@ -93,7 +93,7 @@ static struct rr *ipseckey_parse(char *name, long ttl, int type, char *s)
 static char* ipseckey_human(struct rr *rrv)
 {
     RRCAST(ipseckey);
-    char s[1024], gw[1024];
+    char s[2048], gw[1024];
 
     switch (rr->gateway_type) {
     case 0:
@@ -111,7 +111,7 @@ static char* ipseckey_human(struct rr *rrv)
     default:
         strcpy(gw, "??");
     }
-    snprintf(s, 1024, "( %d %d %d %s ... )",
+    snprintf(s, 2048, "( %d %d %d %s ... )",
          rr->precedence, rr->gateway_type, rr->algorithm, gw);
     return quickstrdup_temp(s);
 }
@@ -176,4 +176,3 @@ static struct binary_data ipseckey_wirerdata(struct rr *rrv)
 }
 
 struct rr_methods ipseckey_methods = { ipseckey_parse, ipseckey_human, ipseckey_wirerdata, NULL, NULL };
-
