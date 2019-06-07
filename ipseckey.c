@@ -100,10 +100,10 @@ static char* ipseckey_human(struct rr *rrv)
         strcpy(gw, rr->gateway.gateway_none);
         break;
     case 1:
-        inet_ntop(AF_INET &rr->gateway.gateway_ipv4, gw, sizeof(gw));
+        inet_ntop(AF_INET, &rr->gateway.gateway_ipv4, gw, sizeof(*gw));
         break;
     case 2:
-        inet_ntop(AF_INET6, &rr->gateway.gateway_ipv6, gw, sizeof(gw));
+        inet_ntop(AF_INET6, &rr->gateway.gateway_ipv6, gw, sizeof(*gw));
         break;
     case 3:
         strcpy(gw, rr->gateway.gateway_name);
@@ -111,7 +111,7 @@ static char* ipseckey_human(struct rr *rrv)
     default:
         strcpy(gw, "??");
     }
-    snprintf(s, 2048, "( %d %d %d %s ... )",
+    snprintf(s, 1024, "( %d %d %d %s ... )",
          rr->precedence, rr->gateway_type, rr->algorithm, gw);
     return quickstrdup_temp(s);
 }
