@@ -46,6 +46,7 @@ static struct binary_data name2hash(char *name, struct rr *param)
     /* XXX Maybe use Init_ex and Final_ex for speed? */
 
     ctx = EVP_MD_CTX_new();
+    if (EVP_DigestInit(ctx, EVP_sha1()) != 1)
         return r;
     digest_size = EVP_MD_CTX_size(ctx);
     EVP_DigestUpdate(ctx, wire_name.data, wire_name.length);
